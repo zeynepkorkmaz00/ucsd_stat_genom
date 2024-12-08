@@ -6,11 +6,10 @@ library(data.table)
 library(plink2R)
 library(dplyr)
 library(GenomicRanges)
+library(Gviz)
 library(rtracklayer)
-library(Sushi)
-library("devtools")
-
-
+#library(Sushi)
+#library("devtools")
 
 # Loading GWAS summary statistics
 gwas_file <- "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/imsgc_2013_24076602_ms_efo0003885_1_ichip.sumstats.tsv"
@@ -98,46 +97,42 @@ top_3_chromosomes <- snps_associated_w_genes %>%
 #function for plotting
 plot_bedgraph_by_tissue <- function(bedgraph_list, tissue_labels, chrom, chromstart, chromend, color_map, title) {
   # Subset tissue labels and colors for available data
-  available_tissues <- names(bedgraph_list)
-  available_colors <- color_map[available_tissues]
-  
-  # Plot each bedgraph
-  for (i in seq_along(bedgraph_list)) {
-    plotBedgraph(
-      bedgraph_list[[i]],
-      chrom = chrom,
-      chromstart = chromstart,
-      chromend = chromend,
-      transparency = 0.50,
-      overlay = TRUE,
-      rescaleoverlay = FALSE,
-      color = available_colors[i]
+  available_tissues <- tissue_labels[names(bedgraph_list)]
+  available_colors <- color_map[names(bedgraph_list)]
+
+  # create Genomic Ranges object
+  gr_list <- lapply(bedgraph_list, function(df) {
+    GRanges(
+      seqnames = as.character(df$chrom),  
+      ranges = IRanges(start = df$start, end = df$end),
+      score = df$value                   
     )
-    labelgenome(
-      chrom = chrom,
-      chromstart = chromstart,
-      chromend = chromend,
-      n = 4,
-      scale = "Mb"
+  })
+    
+  # Create DataTracks for each tissue
+  data_tracks <- mapply(function(gr, color, label) {
+    DataTrack(
+      range = gr,
+      type = "l",    
+      col = color,
+      name = label,
+      genome = "hg19", 
+      chromosome = chrom  
     )
-    axis(side = 2, las = 2, tcl = 0.2)
-  }
+  }, gr_list, available_colors, available_tissues, SIMPLIFY = FALSE)
+    
+  x_axis <- GenomeAxisTrack(col = "black")
   
-  # Add legend for available tissues
-  legend(
-    "topright",
-    inset = 0.025,
-    legend = tissue_labels[available_tissues],
-    fill = available_colors,
-    border = "black",
-    text.font = 2,
-    cex = 0.5
+  # plot
+  plotTracks(
+    c(data_tracks,x_axis),
+    from = chromstart, 
+    to = chromend, 
+    main = title,
+    col.title = "black", 
+    col.axis = "black",
+    background.title = "white"
   )
-  
-  
-  if (!is.null(title)) {
-    title(main = title)
-  }
 }
 
 # Colors for each tissue
@@ -159,10 +154,10 @@ tissue_labels <- c(
 #LOADING THE DATA FOR CHR1
 #BRAIN
 file_paths <- list(
-  "SOX2" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy736-[IMPACT_211_predictions_SOX2_chr1.bedgraph.gz",
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy670-[IMPACT_529_predictions_CTCF_chr1.bedgraph.gz",
-  "MEF2A" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy538-[IMPACT_483_predictions_MEF2A_chr1.bedgraph.gz",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy494-[IMPACT_464_predictions_RXRA_chr1.bedgraph.gz"
+  "SOX2" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy736-[IMPACT_211_predictions_SOX2_chr1.bedgraph.gz]",
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy670-[IMPACT_529_predictions_CTCF_chr1.bedgraph.gz]",
+  "MEF2A" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy538-[IMPACT_483_predictions_MEF2A_chr1.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy494-[IMPACT_464_predictions_RXRA_chr1.bedgraph.gz]"
 )
 brain_ch1_data <- lapply(file_paths, process_bedgraph, chrom = "chr1")
 brain_ch1_sox2 <- brain_ch1_data[["SOX2"]]
@@ -172,9 +167,9 @@ brain_ch1_rxra <- brain_ch1_data[["RXRA"]]
 
 #BLOOD
 file_paths <- list(
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy4851-[IMPACT_391_predictions_CTCF_chr1.bedgraph.gz]",
-  "MEF2A" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy4037-[IMPACT_584_predictions_MEF2A_chr1.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy3575-[IMPACT_3_predictions_RXRA_chr1.bedgraph.gz]"
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy4851-[IMPACT_391_predictions_CTCF_chr1.bedgraph.gz]",
+  "MEF2A" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy4037-[IMPACT_584_predictions_MEF2A_chr1.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy3575-[IMPACT_3_predictions_RXRA_chr1.bedgraph.gz]"
 )
 blood_ch1_data <- lapply(file_paths, process_bedgraph, chrom = "chr1")
 blood_ch1_ctcf <- blood_ch1_data[["CTCF"]]
@@ -183,9 +178,9 @@ blood_ch1_rxra <- blood_ch1_data[["RXRA"]]
 
 #STEM CELL
 file_paths <- list(
-  "SOX2" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy561-[IMPACT_370_predictions_SOX2_chr1.bedgraph.gz]",
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy1419-[IMPACT_339_predictions_CTCF_chr1.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy1045-[IMPACT_618_predictions_RXRA_chr1.bedgraph.gz]"
+  "SOX2" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy561-[IMPACT_370_predictions_SOX2_chr1.bedgraph.gz]",
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy1419-[IMPACT_339_predictions_CTCF_chr1.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy1045-[IMPACT_618_predictions_RXRA_chr1.bedgraph.gz]"
 )
 sc_ch1_data <- lapply(file_paths, process_bedgraph, chrom = "chr1")
 sc_ch1_sox2 <- sc_ch1_data[["SOX2"]]
@@ -194,7 +189,7 @@ sc_ch1_rxra <- sc_ch1_data[["RXRA"]]
 
 #EYE
 file_paths <- list(
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/Galaxy33-[IMPACT_327_predictions_CTCF_chr1.bedgraph.gz]"
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr1/Galaxy33-[IMPACT_327_predictions_CTCF_chr1.bedgraph.gz]"
 )
 eye_ch1_data <- lapply(file_paths, process_bedgraph, chrom = "chr1")
 eye_ch1_ctcf <- eye_ch1_data[["CTCF"]]
@@ -231,6 +226,8 @@ bedgraph_list_rxra <- list(
 )
 
 chrom <- "chr1"
+pdf(file = "chr1_plots.pdf")
+
 # Plot for CTCF
 plot_bedgraph_by_tissue(
   bedgraph_list = bedgraph_list_ctcf,
@@ -239,7 +236,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom1,
   chromend = highest_chrom1,
   color_map = color_map,
-  title = "CTCF Transcription Factor"
+  title = paste0("CTCF, ",chrom)
 )
 
 # Plot for MEF2A
@@ -250,7 +247,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom1,
   chromend = highest_chrom1,
   color_map = color_map,
-  title = "MEF2A Transcription Factor"
+  title = paste0("MEF2A, ",chrom)
 )
 
 # Plot for SOX2
@@ -261,7 +258,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom1,
   chromend = highest_chrom1,
   color_map = color_map,
-  title = "SOX2 Transcription Factor"
+  title = paste0("SOX2, ",chrom)
 )
 
 #Plot for RXRA
@@ -272,18 +269,18 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom1,
   chromend = highest_chrom1,
   color_map = color_map,
-  title = "RXRA Transcription Factor"
+  title = paste0("RXRA, ",chrom)
 )
-
+dev.off()
 
 #LOADING THE DATA FOR CHR6
 
 #BRAIN
 file_paths <- list(
-  "SOX2" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy744-[IMPACT_211_predictions_SOX2_chr6.bedgraph.gz]",
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy678-[IMPACT_529_predictions_CTCF_chr6.bedgraph.gz]",
-  "MEF2A" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy546-[IMPACT_483_predictions_MEF2A_chr6.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy502-[IMPACT_464_predictions_RXRA_chr6.bedgraph.gz]"
+  "SOX2" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy744-[IMPACT_211_predictions_SOX2_chr6.bedgraph.gz]",
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy678-[IMPACT_529_predictions_CTCF_chr6.bedgraph.gz]",
+  "MEF2A" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy546-[IMPACT_483_predictions_MEF2A_chr6.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy502-[IMPACT_464_predictions_RXRA_chr6.bedgraph.gz]"
 )
 brain_ch6_data <- lapply(file_paths, process_bedgraph, chrom = "chr6")
 brain_ch6_sox2 <- brain_ch6_data[["SOX2"]]
@@ -293,9 +290,9 @@ brain_ch6_rxra <- brain_ch6_data[["RXRA"]]
 
 #BLOOD
 file_paths <- list(
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy4859-[IMPACT_391_predictions_CTCF_chr6.bedgraph.gz]",
-  "MEF2A" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy4045-[IMPACT_584_predictions_MEF2A_chr6.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy3583-[IMPACT_3_predictions_RXRA_chr6.bedgraph.gz]"
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy4859-[IMPACT_391_predictions_CTCF_chr6.bedgraph.gz]",
+  "MEF2A" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy4045-[IMPACT_584_predictions_MEF2A_chr6.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy3583-[IMPACT_3_predictions_RXRA_chr6.bedgraph.gz]"
 )
 blood_ch6_data <- lapply(file_paths, process_bedgraph, chrom = "chr6")
 blood_ch6_ctcf <- blood_ch6_data[["CTCF"]]
@@ -304,9 +301,9 @@ blood_ch6_rxra <- blood_ch6_data[["RXRA"]]
 
 #STEM CELL
 file_paths <- list(
-  "SOX2" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy1713-[IMPACT_369_predictions_SOX2_chr6.bedgraph.gz]",
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy1427-[IMPACT_339_predictions_CTCF_chr6.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy1053-[IMPACT_618_predictions_RXRA_chr6.bedgraph.gz]"
+  "SOX2" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy1713-[IMPACT_369_predictions_SOX2_chr6.bedgraph.gz]",
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy1427-[IMPACT_339_predictions_CTCF_chr6.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy1053-[IMPACT_618_predictions_RXRA_chr6.bedgraph.gz]"
 )
 sc_ch6_data <- lapply(file_paths, process_bedgraph, chrom = "chr6")
 sc_ch6_sox2 <- sc_ch6_data[["SOX2"]]
@@ -315,7 +312,7 @@ sc_ch6_rxra <- sc_ch6_data[["RXRA"]]
 
 #EYE
 file_paths <- list(
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr6/Galaxy41-[IMPACT_327_predictions_CTCF_chr6.bedgraph.gz]"
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr6/Galaxy41-[IMPACT_327_predictions_CTCF_chr6.bedgraph.gz]"
 )
 eye_ch6_data <- lapply(file_paths, process_bedgraph, chrom = "chr6")
 eye_ch6_ctcf <- eye_ch6_data[["CTCF"]]
@@ -351,6 +348,8 @@ bedgraph_list_rxra <- list(
 
 
 chrom <- "chr6"
+
+pdf(file = "chr6_plots.pdf")
 # Plot for CTCF
 plot_bedgraph_by_tissue(
   bedgraph_list = bedgraph_list_ctcf,
@@ -359,7 +358,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom6,
   chromend = highest_chrom6,
   color_map = color_map,
-  title = "CTCF Transcription Factor"
+  title = paste0("CTCF, ",chrom)
 )
 
 # Plot for MEF2A
@@ -370,7 +369,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom6,
   chromend = highest_chrom6,
   color_map = color_map,
-  title = "MEF2A Transcription Factor"
+  title = paste0("MEF2A, ",chrom)
 )
 
 # Plot for SOX2
@@ -381,7 +380,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom6,
   chromend = highest_chrom6,
   color_map = color_map,
-  title = "SOX2 Transcription Factor"
+  title = paste0("SOX2, ",chrom)
 )
 
 #Plot for RXRA
@@ -392,16 +391,17 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom6,
   chromend = highest_chrom6,
   color_map = color_map,
-  title = "RXRA Transcription Factor"
+  title = paste0("RXRA, ",chrom)
 )
+dev.off()
 
 #LOADING THE DATA FOR CHR19
 #BRAIN
 file_paths <- list(
-  "SOX2" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy735-[IMPACT_211_predictions_SOX2_chr19.bedgraph.gz]",
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy669-[IMPACT_529_predictions_CTCF_chr19.bedgraph.gz]",
-  "MEF2A" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy537-[IMPACT_483_predictions_MEF2A_chr19.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy493-[IMPACT_464_predictions_RXRA_chr19.bedgraph.gz]"
+  "SOX2" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy735-[IMPACT_211_predictions_SOX2_chr19.bedgraph.gz]",
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy669-[IMPACT_529_predictions_CTCF_chr19.bedgraph.gz]",
+  "MEF2A" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy537-[IMPACT_483_predictions_MEF2A_chr19.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy493-[IMPACT_464_predictions_RXRA_chr19.bedgraph.gz]"
 )
 brain_ch19_data <- lapply(file_paths, process_bedgraph, chrom = "chr19")
 brain_ch19_sox2 <- brain_ch19_data[["SOX2"]]
@@ -411,9 +411,9 @@ brain_ch19_rxra <- brain_ch19_data[["RXRA"]]
 
 #BLOOD
 file_paths <- list(
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy4850-[IMPACT_391_predictions_CTCF_chr19.bedgraph.gz]",
-  "MEF2A" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy4036-[IMPACT_584_predictions_MEF2A_chr19.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy3574-[IMPACT_3_predictions_RXRA_chr19.bedgraph.gz]"
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy4850-[IMPACT_391_predictions_CTCF_chr19.bedgraph.gz]",
+  "MEF2A" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy4036-[IMPACT_584_predictions_MEF2A_chr19.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy3574-[IMPACT_3_predictions_RXRA_chr19.bedgraph.gz]"
 )
 blood_ch19_data <- lapply(file_paths, process_bedgraph, chrom = "chr19")
 blood_ch19_ctcf <- blood_ch19_data[["CTCF"]]
@@ -422,9 +422,9 @@ blood_ch19_rxra <- blood_ch19_data[["RXRA"]]
 
 #STEM CELL
 file_paths <- list(
-  "SOX2" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy1704-[IMPACT_369_predictions_SOX2_chr19.bedgraph.gz]",
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy1418-[IMPACT_339_predictions_CTCF_chr19.bedgraph.gz]",
-  "RXRA" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy1044-[IMPACT_618_predictions_RXRA_chr19.bedgraph.gz]"
+  "SOX2" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy1704-[IMPACT_369_predictions_SOX2_chr19.bedgraph.gz]",
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy1418-[IMPACT_339_predictions_CTCF_chr19.bedgraph.gz]",
+  "RXRA" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy1044-[IMPACT_618_predictions_RXRA_chr19.bedgraph.gz]"
 )
 sc_ch19_data <- lapply(file_paths, process_bedgraph, chrom = "chr19")
 sc_ch19_sox2 <- sc_ch19_data[["SOX2"]]
@@ -434,7 +434,7 @@ sc_ch19_rxra <- sc_ch19_data[["RXRA"]]
 
 #EYE
 file_paths <- list(
-  "CTCF" = "/Users/zeynepkorkmaz/Desktop/UCSD/Statistical_Genomics/project/chr19/Galaxy32-[IMPACT_327_predictions_CTCF_chr19.bedgraph.gz]"
+  "CTCF" = "/Users/dashaveraksa/Downloads/DSC291_bedgraph/chr19/Galaxy32-[IMPACT_327_predictions_CTCF_chr19.bedgraph.gz]"
 )
 eye_ch19_data <- lapply(file_paths, process_bedgraph, chrom = "chr19")
 eye_ch19_ctcf <- eye_ch19_data[["CTCF"]]
@@ -470,6 +470,8 @@ bedgraph_list_rxra <- list(
 
 
 chrom <- "chr19"
+
+pdf(file = "chr19_plots.pdf")
 # Plot for CTCF
 plot_bedgraph_by_tissue(
   bedgraph_list = bedgraph_list_ctcf,
@@ -478,7 +480,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom19,
   chromend = highest_chrom19,
   color_map = color_map,
-  title = "CTCF Transcription Factor"
+  title = paste0("CTCF, ",chrom)
 )
 
 # Plot for MEF2A
@@ -489,7 +491,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom19,
   chromend = highest_chrom19,
   color_map = color_map,
-  title = "MEF2A Transcription Factor"
+  title = paste0("MEF2A, ",chrom)
 )
 
 # Plot for SOX2
@@ -500,7 +502,7 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom19,
   chromend = highest_chrom19,
   color_map = color_map,
-  title = "SOX2 Transcription Factor"
+  title = paste0("SOX2, ",chrom)
 )
 
 #Plot for RXRA
@@ -511,5 +513,6 @@ plot_bedgraph_by_tissue(
   chromstart = lowest_chrom19,
   chromend = highest_chrom19,
   color_map = color_map,
-  title = "RXRA Transcription Factor"
+  title = paste0("RXRA, ",chrom)
 )
+dev.off()

@@ -3,13 +3,13 @@ library(plink2R)
 library(dplyr)
 library(ggplot2)
 
-setwd("~/OneDrive - UC San Diego/DSC291/ucsd_stat_genom")
+setwd("~/OneDrive - UC San Diego/DSC291/ucsd_stat_genom/eqtl")
 
 # load GWAS sumstats for MS
-gwas <- fread("imsgc_2013_24076602_ms_efo0003885_1_ichip.sumstats.tsv.gz") # 155756 SNPs
+gwas <- fread("data/imsgc_2013_24076602_ms_efo0003885_1_ichip.sumstats.tsv.gz") # 155756 SNPs
 
 # load expression data  
-gene_exp <- fread("GD462.GeneQuantRPKM.50FN.samplename.resk10.txt.gz", header = T)
+gene_exp <- fread("data/GD462.GeneQuantRPKM.50FN.samplename.resk10.txt.gz", header = T)
 
 # find significant SNPs
 gwas_sig_8 <- gwas[gwas$p < 5e-8,] # 3782
@@ -91,7 +91,7 @@ dim(geno_mat) # 358 3588
 geno_mat_std <- scale(geno_mat, scale = T) 
 any(is.na(geno_mat_std)) # FALSE
 
-save(file = "geno_mat_std_FINAL.RData",geno_mat_std)
+save(file = "data/geno_mat_std_FINAL.RData",geno_mat_std)
 
 # 1 - PCA on the genotypes
 # dont need to downsample because there are only 3588 SNPs
@@ -112,7 +112,7 @@ any(is.na(gene_exp_mat_std)) # FALSE
 # transpose and perform PCA
 pca_gene_exp <- prcomp(t(gene_exp_mat_std), scale = T)
 
-save(file = "pca_FINAL.RData",pca_gene_exp,pca_genotype)
+save(file = "data/pca_FINAL.RData",pca_gene_exp,pca_genotype)
 
 # 3 - Regress out covariates
 # combine 10 genotyping PCs and 10 gene expression PCs into one covariate matrix
@@ -151,7 +151,7 @@ for (gene in colnames(gene_exp_mat_std)) {
   j = j+1
 }
 
-save(file = "eqtl_sumstats_all.RData", eqtl_sumstats_all)
+save(file = "data/eqtl_sumstats_all.RData", eqtl_sumstats_all)
 
 # use ENCODE to get ChIPseq data to identify regulatory regions and overlap those with our SNPs
 # take H3K4me1 (active and poised enhancers) from brain organoid
@@ -199,9 +199,10 @@ eqtl_enhancer <- merge(eqtl_enhancer, gene_mapping, by.x = "Gene", by.y = "ensem
 # gene_mapping maps each of the 33 unique ENSMBL ids to its gene name 
 # eqtl_enhancer stores each of the 74 SNPs in enhancer regions that are significantly correlated with genes
 # enhancer_snps_df has the chr, start and end of the enhancer that each of the 365 SNPs is in
-save(file = "enhancer_gene_mapping.RData", gene_mapping, eqtl_enhancer, enhancer_snps_df)
+save(file = "data/enhancer_gene_mapping.RData", gene_mapping, eqtl_enhancer, enhancer_snps_df)
 
-
+library(writexl)
+write_xlsx(gene_mapping,"data/gene_mapping.xlsx")
 
 
 
